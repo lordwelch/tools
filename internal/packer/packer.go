@@ -1923,8 +1923,16 @@ func (pack *Pack) logicWrite(sbomHook func(marshaled []byte, withHash SBOMWithHa
 		return nil
 	}
 
-	// Determine where to read the boot, root and MBR images from.
+	return pack.logicUpdate(ctx, isDev, bootSize, rootSize, tmpMBR, tmpBoot, tmpRoot, updateBaseUrl, target, updateHttpClient)
+}
+
+func (pack *Pack) logicUpdate(ctx context.Context, isDev bool, bootSize int64, rootSize int64, tmpMBR, tmpBoot, tmpRoot *os.File, updateBaseUrl *url.URL, target *updater.Target, updateHttpClient *http.Client) error {
+	log := pack.Env.Logger()
+	cfg := pack.Cfg       // for convenience
+	update := pack.update // for convenience
+
 	var rootReader, bootReader, mbrReader io.Reader
+	// Determine where to read the boot, root and MBR images from.
 	switch {
 	case cfg.InternalCompatibilityFlags.Overwrite != "":
 		if isDev {
@@ -2099,7 +2107,7 @@ func (pack *Pack) logicWrite(sbomHook func(marshaled []byte, withHash SBOMWithHa
 		if err != nil {
 			return err
 		}
-		updateHttpClient, foundMatchingCertificate, err = httpclient.GetTLSHttpClientByTLSFlag(tlsflag.GetUseTLS(), false /* insecure */, updateBaseUrl)
+		updateHttpClient, _, err = httpclient.GetTLSHttpClientByTLSFlag(tlsflag.GetUseTLS(), false /* insecure */, updateBaseUrl)
 		if err != nil {
 			return fmt.Errorf("getting http client by tls flag: %v", err)
 		}
