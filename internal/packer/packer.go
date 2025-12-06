@@ -17,7 +17,6 @@ import (
 
 	"github.com/gokrazy/internal/config"
 	"github.com/gokrazy/internal/deviceconfig"
-	"github.com/gokrazy/internal/updateflag"
 	"github.com/gokrazy/tools/internal/log"
 	"github.com/gokrazy/tools/packer"
 )
@@ -1101,58 +1100,6 @@ func (pack *Pack) logic(ctx context.Context, sbomHook func(marshaled []byte, wit
 		return err
 	}
 
-	return nil
-}
-
-func (pack *Pack) printHowToInteract(cfg *config.Struct) error {
-	log := pack.Env.Logger()
-	update := pack.update // for convenience
-
-	updateFlag := pack.Cfg.InternalCompatibilityFlags.Update
-	if updateFlag == "" {
-		updateFlag = "yes"
-	}
-	updateBaseUrl, err := updateflag.Value{
-		Update: updateFlag,
-	}.BaseURL(update.HTTPPort, update.HTTPSPort, pack.schema, update.Hostname, update.HTTPPassword)
-	if err != nil {
-		return err
-	}
-
-	log.Printf("")
-	log.Printf("To interact with the device, gokrazy provides a web interface reachable at:")
-	log.Printf("")
-	log.Printf("\t%s", updateBaseUrl.String())
-	log.Printf("")
-	log.Printf("In addition, the following Linux consoles are set up:")
-	log.Printf("")
-	if cfg.SerialConsoleOrDefault() != "disabled" {
-		log.Printf("\t1. foreground Linux console on the serial port (115200n8, pin 6, 8, 10 for GND, TX, RX), accepting input")
-		log.Printf("\t2. secondary Linux framebuffer console on HDMI; shows Linux kernel message but no init system messages")
-	} else {
-		log.Printf("\t1. foreground Linux framebuffer console on HDMI")
-	}
-
-	if cfg.SerialConsoleOrDefault() != "disabled" {
-		log.Printf("")
-		log.Printf("Use -serial_console=disabled to make gokrazy not touch the serial port, and instead make the framebuffer console on HDMI the foreground console")
-	}
-	log.Printf("")
-	if pack.schema == "https" {
-		certObj, err := getCertificateFromString(update.CertPEM)
-		if err != nil {
-			return fmt.Errorf("error loading certificate: %v", err)
-		} else {
-			log.Printf("")
-			log.Printf("The TLS Certificate of the gokrazy web interface is located under")
-			log.Printf("\t%s", cfg.Meta.Path)
-			log.Printf("The fingerprint of the Certificate is")
-			log.Printf("\t%x", getCertificateFingerprintSHA1(certObj))
-			log.Printf("The certificate is valid until")
-			log.Printf("\t%s", certObj.NotAfter.String())
-			log.Printf("Please verify the certificate, before adding an exception to your browser!")
-		}
-	}
 	return nil
 }
 
