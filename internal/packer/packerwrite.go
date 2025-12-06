@@ -325,6 +325,13 @@ func (ors *offsetReadSeeker) Seek(offset int64, whence int) (int64, error) {
 	return ors.ReadSeeker.Seek(offset, whence)
 }
 
+type countingWriter int64
+
+func (cw *countingWriter) Write(p []byte) (n int, err error) {
+	*cw += countingWriter(len(p))
+	return len(p), nil
+}
+
 func (p *Pack) overwriteFile(root *FileInfo, rootDeviceFiles []deviceconfig.RootFile, firstPartitionOffsetSectors int64) (bootSize int64, rootSize int64, err error) {
 	log := p.Env.Logger()
 

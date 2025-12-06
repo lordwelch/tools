@@ -680,13 +680,6 @@ func FindExtraFiles(cfg *config.Struct) (map[string][]*FileInfo, error) {
 	return extraFiles, nil
 }
 
-type countingWriter int64
-
-func (cw *countingWriter) Write(p []byte) (n int, err error) {
-	*cw += countingWriter(len(p))
-	return len(p), nil
-}
-
 func verifyNotMounted(dev string) error {
 	b, err := os.ReadFile("/proc/self/mountinfo")
 	if err != nil {
