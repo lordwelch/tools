@@ -799,17 +799,6 @@ func (cw *countingWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func partitionPath(base, num string) string {
-	if strings.HasPrefix(base, "/dev/mmcblk") ||
-		strings.HasPrefix(base, "/dev/loop") {
-		return base + "p" + num
-	} else if strings.HasPrefix(base, "/dev/disk") ||
-		strings.HasPrefix(base, "/dev/rdisk") {
-		return base + "s" + num
-	}
-	return base + num
-}
-
 func verifyNotMounted(dev string) error {
 	b, err := os.ReadFile("/proc/self/mountinfo")
 	if err != nil {

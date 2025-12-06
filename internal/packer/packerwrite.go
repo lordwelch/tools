@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/trace"
+	"strings"
 
 	"github.com/gokrazy/internal/config"
 	"github.com/gokrazy/internal/deviceconfig"
@@ -298,6 +299,17 @@ func (p *Pack) overwriteDevice(dev string, root *FileInfo, rootDeviceFiles []dev
 	log.Printf("")
 
 	return nil
+}
+
+func partitionPath(base, num string) string {
+	if strings.HasPrefix(base, "/dev/mmcblk") ||
+		strings.HasPrefix(base, "/dev/loop") {
+		return base + "p" + num
+	} else if strings.HasPrefix(base, "/dev/disk") ||
+		strings.HasPrefix(base, "/dev/rdisk") {
+		return base + "s" + num
+	}
+	return base + num
 }
 
 type offsetReadSeeker struct {
