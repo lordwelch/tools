@@ -3,16 +3,20 @@ package packer
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"runtime/trace"
 
 	"github.com/gokrazy/internal/config"
+	"github.com/gokrazy/internal/deviceconfig"
 	"github.com/gokrazy/internal/httpclient"
 	"github.com/gokrazy/internal/tlsflag"
 	"github.com/gokrazy/internal/updateflag"
 	"github.com/gokrazy/tools/internal/measure"
+	"github.com/gokrazy/tools/packer"
 	"github.com/gokrazy/updater"
 )
 
@@ -218,6 +222,157 @@ func (pack *Pack) logicWrite(dnsCheck chan error) error {
 	}
 
 	return pack.logicUpdate(ctx, isDev, bootSize, rootSize, tmpMBR, tmpBoot, tmpRoot, updateBaseUrl, target, updateHttpClient)
+}
+
+func (p *Pack) overwriteDevice(dev string, root *FileInfo, rootDeviceFiles []deviceconfig.RootFile) error {
+	log := p.Env.Logger()
+
+	if err := verifyNotMounted(dev); err != nil {
+		return err
+	}
+	parttable := "GPT + Hybrid MBR"
+	if !p.UseGPT {
+		parttable = "no GPT, only MBR"
+	}
+	log.Printf("partitioning %s (%s)", dev, parttable)
+
+	f, err := p.partition(p.Cfg.InternalCompatibilityFlags.Overwrite)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err := f.Seek(p.FirstPartitionOffsetSectors*512, io.SeekStart); err != nil {
+		return err
+	}
+
+	if err := p.writeBoot(f, ""); err != nil {
+		return err
+	}
+
+	if err := p.writeMBR(p.FirstPartitionOffsetSectors, &offsetReadSeeker{f, p.FirstPartitionOffsetSectors * 512}, f, p.Partuuid); err != nil {
+		return err
+	}
+
+	if _, err := f.Seek((p.FirstPartitionOffsetSectors+(100*MB/512))*512, io.SeekStart); err != nil {
+		return err
+	}
+
+	tmp, err := os.CreateTemp("", "gokr-packer")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	defer tmp.Close()
+
+	if err := p.writeRoot(tmp, root); err != nil {
+		return err
+	}
+	if _, err := tmp.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(f, tmp); err != nil {
+		return err
+	}
+
+	if err := p.writeRootDeviceFiles(f, rootDeviceFiles); err != nil {
+		return err
+	}
+
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	log.Printf("If your applications need to store persistent data, unplug and re-plug the SD card, then create a file system using e.g.:")
+	log.Printf("")
+	partition := partitionPath(dev, "4")
+	if p.ModifyCmdlineRoot() {
+		partition = fmt.Sprintf("/dev/disk/by-partuuid/%s", p.PermUUID())
+	} else {
+		if target, err := filepath.EvalSymlinks(dev); err == nil {
+			partition = partitionPath(target, "4")
+		}
+	}
+	log.Printf("\tmkfs.ext4 %s", partition)
+	log.Printf("")
+
+	return nil
+}
+
+type offsetReadSeeker struct {
+	io.ReadSeeker
+	offset int64
+}
+
+func (ors *offsetReadSeeker) Seek(offset int64, whence int) (int64, error) {
+	if whence == io.SeekStart {
+		// github.com/gokrazy/internal/fat.Reader only uses io.SeekStart
+		return ors.ReadSeeker.Seek(offset+ors.offset, io.SeekStart)
+	}
+	return ors.ReadSeeker.Seek(offset, whence)
+}
+
+func (p *Pack) overwriteFile(root *FileInfo, rootDeviceFiles []deviceconfig.RootFile, firstPartitionOffsetSectors int64) (bootSize int64, rootSize int64, err error) {
+	log := p.Env.Logger()
+
+	f, err := os.Create(p.Cfg.InternalCompatibilityFlags.Overwrite)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if err := f.Truncate(int64(p.Cfg.InternalCompatibilityFlags.TargetStorageBytes)); err != nil {
+		return 0, 0, err
+	}
+
+	if err := p.Partition(f, uint64(p.Cfg.InternalCompatibilityFlags.TargetStorageBytes)); err != nil {
+		return 0, 0, err
+	}
+
+	if _, err := f.Seek(p.FirstPartitionOffsetSectors*512, io.SeekStart); err != nil {
+		return 0, 0, err
+	}
+	var bs countingWriter
+	if err := p.writeBoot(io.MultiWriter(f, &bs), ""); err != nil {
+		return 0, 0, err
+	}
+
+	if err := p.writeMBR(p.FirstPartitionOffsetSectors, &offsetReadSeeker{f, p.FirstPartitionOffsetSectors * 512}, f, p.Partuuid); err != nil {
+		return 0, 0, err
+	}
+
+	if _, err := f.Seek(p.FirstPartitionOffsetSectors*512+100*MB, io.SeekStart); err != nil {
+		return 0, 0, err
+	}
+
+	tmp, err := os.CreateTemp("", "gokr-packer")
+	if err != nil {
+		return 0, 0, err
+	}
+	defer os.Remove(tmp.Name())
+	defer tmp.Close()
+
+	if err := p.writeRoot(tmp, root); err != nil {
+		return 0, 0, err
+	}
+	if _, err := tmp.Seek(0, io.SeekStart); err != nil {
+		return 0, 0, err
+	}
+
+	var rs countingWriter
+	if _, err := io.Copy(io.MultiWriter(f, &rs), tmp); err != nil {
+		return 0, 0, err
+	}
+
+	if err := p.writeRootDeviceFiles(f, rootDeviceFiles); err != nil {
+		return 0, 0, err
+	}
+
+	log.Printf("If your applications need to store persistent data, create a file system using e.g.:")
+	log.Printf("\t/sbin/mkfs.ext4 -F -E offset=%v %s %v", p.FirstPartitionOffsetSectors*512+1100*MB, p.Cfg.InternalCompatibilityFlags.Overwrite, packer.PermSizeInKB(firstPartitionOffsetSectors, uint64(p.Cfg.InternalCompatibilityFlags.TargetStorageBytes)))
+	log.Printf("")
+
+	return int64(bs), int64(rs), f.Close()
 }
 
 func (pack *Pack) printHowToInteract(cfg *config.Struct) error {
