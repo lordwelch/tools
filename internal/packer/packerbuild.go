@@ -15,7 +15,7 @@ import (
 	"github.com/gokrazy/tools/packer"
 )
 
-func (pack *Pack) logicBuild(sbomHook func(marshaled []byte, withHash SBOMWithHash), bindir string) error {
+func (pack *Pack) logicBuild(bindir string) error {
 	log := pack.Env.Logger()
 
 	cfg := pack.Cfg // for convenience
@@ -351,14 +351,7 @@ func (pack *Pack) logicBuild(sbomHook func(marshaled []byte, withHash SBOMWithHa
 		return err
 	}
 	pack.sbom = sbom
-
-	// TODO: This is a terrible hack. After removing gokr-packer
-	// (https://github.com/gokrazy/gokrazy/issues/301), we should refactor this
-	// overly long method into more manageable chunks.
-	if sbomHook != nil {
-		sbomHook(sbom, sbomWithHash)
-		return nil
-	}
+	pack.sbomWithHash = sbomWithHash
 
 	etcGokrazy := &FileInfo{Filename: "gokrazy"}
 	etcGokrazy.Dirents = append(etcGokrazy.Dirents, &FileInfo{

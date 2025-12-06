@@ -408,6 +408,7 @@ type Pack struct {
 	update                      *config.UpdateStruct
 	root                        *FileInfo
 	sbom                        []byte
+	sbomWithHash                SBOMWithHash
 	initTmp                     string
 	kernelDir                   string
 }
@@ -427,7 +428,7 @@ func filterGoEnv(env []string) []string {
 
 const programName = "gokrazy gok"
 
-func (pack *Pack) logic(ctx context.Context, sbomHook func(marshaled []byte, withHash SBOMWithHash)) error {
+func (pack *Pack) logic(ctx context.Context) error {
 	dnsCheck := make(chan error)
 	go func() {
 		defer close(dnsCheck)
@@ -453,7 +454,7 @@ func (pack *Pack) logic(ctx context.Context, sbomHook func(marshaled []byte, wit
 	}
 	defer os.RemoveAll(bindir)
 
-	if err := pack.logicBuild(sbomHook, bindir); err != nil {
+	if err := pack.logicBuild(bindir); err != nil {
 		return err
 	}
 	defer os.RemoveAll(pack.initTmp)
@@ -466,20 +467,26 @@ func (pack *Pack) logic(ctx context.Context, sbomHook func(marshaled []byte, wit
 }
 
 func (pack *Pack) Main(ctx context.Context) {
-	if err := pack.logic(ctx, nil); err != nil {
+	if err := pack.logic(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR:\n  %s\n", err)
 		os.Exit(1)
 	}
 }
 
 func (pack *Pack) GenerateSBOM(ctx context.Context) ([]byte, SBOMWithHash, error) {
-	var sbom []byte
-	var sbomWithHash SBOMWithHash
-	if err := pack.logic(ctx, func(b []byte, wh SBOMWithHash) {
-		sbom = b
-		sbomWithHash = wh
-	}); err != nil {
+	if err := pack.logicPrepare(ctx); err != nil {
 		return nil, SBOMWithHash{}, err
 	}
-	return sbom, sbomWithHash, nil
+
+	bindir, err := os.MkdirTemp("", "gokrazy-bins-")
+	if err != nil {
+		return nil, SBOMWithHash{}, err
+	}
+	defer os.RemoveAll(bindir)
+
+	if err := pack.logicBuild(bindir); err != nil {
+		return nil, SBOMWithHash{}, err
+	}
+	defer os.RemoveAll(pack.initTmp)
+	return pack.sbom, pack.sbomWithHash, nil
 }
