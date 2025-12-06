@@ -1865,22 +1865,43 @@ func (pack *Pack) logicWrite(sbomHook func(marshaled []byte, withHash SBOMWithHa
 	log.Printf("")
 	log.Printf("Build complete!")
 
+	if err := pack.printHowToInteract(cfg); err != nil {
+		return err
+	}
+
+	if err := <-dnsCheck; err != nil {
+		log.Printf("WARNING: if the above URL does not work, perhaps name resolution (DNS) is broken")
+		log.Printf("in your local network? Resolving your hostname failed: %v", err)
+		log.Printf("Did you maybe configure a DNS server other than your router?")
+		log.Printf("")
+	}
+
+	if newInstallation {
+		return nil
+	}
+
+	return pack.logicUpdate(ctx, isDev, bootSize, rootSize, tmpMBR, tmpBoot, tmpRoot, updateBaseUrl, target, updateHttpClient)
+}
+
+func (pack *Pack) printHowToInteract(cfg *config.Struct) error {
+	log := pack.Env.Logger()
 	update := pack.update // for convenience
-	hostPort := update.Hostname
-	if hostPort == "" {
-		hostPort = cfg.Hostname
+
+	updateFlag := pack.Cfg.InternalCompatibilityFlags.Update
+	if updateFlag == "" {
+		updateFlag = "yes"
 	}
-	if pack.schema == "http" && update.HTTPPort != "80" {
-		hostPort = fmt.Sprintf("%s:%s", hostPort, update.HTTPPort)
-	}
-	if pack.schema == "https" && update.HTTPSPort != "443" {
-		hostPort = fmt.Sprintf("%s:%s", hostPort, update.HTTPSPort)
+	updateBaseUrl, err := updateflag.Value{
+		Update: updateFlag,
+	}.BaseURL(update.HTTPPort, update.HTTPSPort, pack.schema, update.Hostname, update.HTTPPassword)
+	if err != nil {
+		return err
 	}
 
 	log.Printf("")
 	log.Printf("To interact with the device, gokrazy provides a web interface reachable at:")
 	log.Printf("")
-	log.Printf("\t%s://gokrazy:%s@%s/", pack.schema, update.HTTPPassword, hostPort)
+	log.Printf("\t%s", updateBaseUrl.String())
 	log.Printf("")
 	log.Printf("In addition, the following Linux consoles are set up:")
 	log.Printf("")
@@ -1911,19 +1932,7 @@ func (pack *Pack) logicWrite(sbomHook func(marshaled []byte, withHash SBOMWithHa
 			log.Printf("Please verify the certificate, before adding an exception to your browser!")
 		}
 	}
-
-	if err := <-dnsCheck; err != nil {
-		log.Printf("WARNING: if the above URL does not work, perhaps name resolution (DNS) is broken")
-		log.Printf("in your local network? Resolving your hostname failed: %v", err)
-		log.Printf("Did you maybe configure a DNS server other than your router?")
-		log.Printf("")
-	}
-
-	if newInstallation {
-		return nil
-	}
-
-	return pack.logicUpdate(ctx, isDev, bootSize, rootSize, tmpMBR, tmpBoot, tmpRoot, updateBaseUrl, target, updateHttpClient)
+	return nil
 }
 
 func (pack *Pack) logicUpdate(ctx context.Context, isDev bool, bootSize int64, rootSize int64, tmpMBR, tmpBoot, tmpRoot *os.File, updateBaseUrl *url.URL, target *updater.Target, updateHttpClient *http.Client) error {
