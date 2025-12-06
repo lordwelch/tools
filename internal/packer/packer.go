@@ -26,37 +26,6 @@ var BuildTimestampOverride contextKey
 
 const MB = 1024 * 1024
 
-type filePathAndModTime struct {
-	path    string
-	modTime time.Time
-}
-
-func findPackageFiles(fileType string) ([]filePathAndModTime, error) {
-	var packageFilePaths []filePathAndModTime
-	err := filepath.Walk(fileType, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info != nil && !info.Mode().IsRegular() {
-			return nil
-		}
-		if strings.HasSuffix(path, fmt.Sprintf("/%s.txt", fileType)) {
-			packageFilePaths = append(packageFilePaths, filePathAndModTime{
-				path:    path,
-				modTime: info.ModTime(),
-			})
-		}
-		return nil
-	})
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil // no fileType directory found
-		}
-	}
-
-	return packageFilePaths, nil
-}
-
 type packageConfigFile struct {
 	kind         string
 	path         string
