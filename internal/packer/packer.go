@@ -814,30 +814,6 @@ func (cw *countingWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (p *Pack) writeBootFile(bootfilename, mbrfilename string) error {
-	f, err := os.Create(bootfilename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	if err := p.writeBoot(f, mbrfilename); err != nil {
-		return err
-	}
-	return f.Close()
-}
-
-func (p *Pack) writeRootFile(filename string, root *FileInfo) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	if err := p.writeRoot(f, root); err != nil {
-		return err
-	}
-	return f.Close()
-}
-
 func partitionPath(base, num string) string {
 	if strings.HasPrefix(base, "/dev/mmcblk") ||
 		strings.HasPrefix(base, "/dev/loop") {

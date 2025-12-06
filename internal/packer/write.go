@@ -202,6 +202,18 @@ func (p *Pack) copyGlobsToBoot(fw *fat.Writer, srcDir string, globs []string) er
 	return nil
 }
 
+func (p *Pack) writeBootFile(bootfilename, mbrfilename string) error {
+	f, err := os.Create(bootfilename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := p.writeBoot(f, mbrfilename); err != nil {
+		return err
+	}
+	return f.Close()
+}
+
 func (p *Pack) writeBoot(f io.Writer, mbrfilename string) error {
 	log := p.Env.Logger()
 	log.Printf("")
@@ -610,6 +622,18 @@ func writeFileInfo(dir *squashfs.Directory, fi *FileInfo) error {
 		}
 	}
 	return d.Flush()
+}
+
+func (p *Pack) writeRootFile(filename string, root *FileInfo) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := p.writeRoot(f, root); err != nil {
+		return err
+	}
+	return f.Close()
 }
 
 func (p *Pack) writeRoot(f io.WriteSeeker, root *FileInfo) error {
