@@ -1080,7 +1080,7 @@ func filterGoEnv(env []string) []string {
 
 const programName = "gokrazy gok"
 
-func (pack *Pack) logicPrepare(ctx context.Context, sbomHook func(marshaled []byte, withHash SBOMWithHash)) error {
+func (pack *Pack) logicPrepare(ctx context.Context) error {
 	log := pack.Env.Logger()
 	cfg := pack.Cfg
 	tlsflag.SetInsecure(cfg.InternalCompatibilityFlags.Insecure)
@@ -1632,7 +1632,7 @@ func (pack *Pack) logic(ctx context.Context, sbomHook func(marshaled []byte, wit
 		dnsCheck <- nil
 	}()
 
-	if err := pack.logicPrepare(ctx, sbomHook); err != nil {
+	if err := pack.logicPrepare(ctx); err != nil {
 		return err
 	}
 
@@ -1647,14 +1647,14 @@ func (pack *Pack) logic(ctx context.Context, sbomHook func(marshaled []byte, wit
 	}
 	defer os.RemoveAll(pack.initTmp)
 
-	if err := pack.logicWrite(sbomHook, bindir, dnsCheck); err != nil {
+	if err := pack.logicWrite(dnsCheck); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (pack *Pack) logicWrite(sbomHook func(marshaled []byte, withHash SBOMWithHash), bindir string, dnsCheck chan error) error {
+func (pack *Pack) logicWrite(dnsCheck chan error) error {
 	ctx := context.Background()
 	log := pack.Env.Logger()
 
