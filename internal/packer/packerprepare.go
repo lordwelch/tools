@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gokrazy/internal/config"
 	"github.com/gokrazy/internal/deviceconfig"
 	"github.com/gokrazy/internal/tlsflag"
 	"github.com/gokrazy/tools/internal/version"
@@ -153,4 +154,116 @@ func (pack *Pack) logicPrepare(ctx context.Context) error {
 	pack.basenames = basenames
 
 	return nil
+}
+
+func (pack *Pack) findDontStart(cfg *config.Struct) (map[string]bool, error) {
+	log := pack.Env.Logger()
+
+	if len(cfg.PackageConfig) > 0 {
+		contents := make(map[string]bool)
+		for pkg, packageConfig := range cfg.PackageConfig {
+			if !packageConfig.DontStart {
+				continue
+			}
+			contents[pkg] = packageConfig.DontStart
+			packageConfigFiles[pkg] = append(packageConfigFiles[pkg], packageConfigFile{
+				kind:         "not be started at boot",
+				path:         cfg.Meta.Path,
+				lastModified: cfg.Meta.LastModified,
+			})
+		}
+		return contents, nil
+	}
+
+	dontStartPaths, err := findPackageFiles("dontstart")
+	if err != nil {
+		return nil, err
+	}
+
+	if len(dontStartPaths) == 0 {
+		return nil, nil // no dontstart.txt files found
+	}
+
+	buildPackages := buildPackageMapFromFlags(cfg)
+
+	contents := make(map[string]bool)
+	for _, p := range dontStartPaths {
+		pkg := strings.TrimSuffix(strings.TrimPrefix(p.path, "dontstart/"), "/dontstart.txt")
+		if !buildPackages[pkg] {
+			log.Printf("WARNING: dontstart.txt file %s does not match any specified package (%s)", pkg, cfg.Packages)
+			continue
+		}
+		packageConfigFiles[pkg] = append(packageConfigFiles[pkg], packageConfigFile{
+			kind:         "not be started at boot",
+			path:         p.path,
+			lastModified: p.modTime,
+		})
+
+		contents[pkg] = true
+	}
+
+	return contents, nil
+}
+
+func (pack *Pack) findWaitForClock(cfg *config.Struct) (map[string]bool, error) {
+	log := pack.Env.Logger()
+
+	if len(cfg.PackageConfig) > 0 {
+		contents := make(map[string]bool)
+		for pkg, packageConfig := range cfg.PackageConfig {
+			if !packageConfig.WaitForClock {
+				continue
+			}
+			contents[pkg] = packageConfig.WaitForClock
+			packageConfigFiles[pkg] = append(packageConfigFiles[pkg], packageConfigFile{
+				kind:         "wait for clock synchronization before start",
+				path:         cfg.Meta.Path,
+				lastModified: cfg.Meta.LastModified,
+			})
+		}
+		return contents, nil
+	}
+
+	waitForClockPaths, err := findPackageFiles("waitforclock")
+	if err != nil {
+		return nil, err
+	}
+
+	if len(waitForClockPaths) == 0 {
+		return nil, nil // no waitforclock.txt files found
+	}
+
+	buildPackages := buildPackageMapFromFlags(cfg)
+
+	contents := make(map[string]bool)
+	for _, p := range waitForClockPaths {
+		pkg := strings.TrimSuffix(strings.TrimPrefix(p.path, "waitforclock/"), "/waitforclock.txt")
+		if !buildPackages[pkg] {
+			log.Printf("WARNING: waitforclock.txt file %s does not match any specified package (%s)", pkg, cfg.Packages)
+			continue
+		}
+		packageConfigFiles[pkg] = append(packageConfigFiles[pkg], packageConfigFile{
+			kind:         "wait for clock synchronization before start",
+			path:         p.path,
+			lastModified: p.modTime,
+		})
+
+		contents[pkg] = true
+	}
+
+	return contents, nil
+}
+
+func findBasenames(cfg *config.Struct) (map[string]string, error) {
+	contents := make(map[string]string)
+	for pkg, packageConfig := range cfg.PackageConfig {
+		if packageConfig.Basename == "" {
+			continue
+		}
+		contents[pkg] = packageConfig.Basename
+		packageConfigFiles[pkg] = append(packageConfigFiles[pkg], packageConfigFile{
+			kind: "be installed with the basename set to " + packageConfig.Basename,
+		})
+	}
+	return contents, nil
 }
