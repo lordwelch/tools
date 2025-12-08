@@ -14,7 +14,6 @@ import (
 	"github.com/gokrazy/internal/config"
 	"github.com/gokrazy/internal/deviceconfig"
 	"github.com/gokrazy/internal/httpclient"
-	"github.com/gokrazy/internal/tlsflag"
 	"github.com/gokrazy/internal/updateflag"
 	"github.com/gokrazy/tools/internal/measure"
 	"github.com/gokrazy/tools/packer"
@@ -43,7 +42,7 @@ func (pack *Pack) logicWrite(dnsCheck chan error) error {
 			return err
 		}
 
-		updateHttpClient, foundMatchingCertificate, err = httpclient.GetTLSHttpClientByTLSFlag(tlsflag.GetUseTLS(), tlsflag.GetInsecure(), updateBaseUrl)
+		updateHttpClient, foundMatchingCertificate, err = httpclient.GetTLSHttpClientByTLSFlag(update.UseTLS, pack.Cfg.InternalCompatibilityFlags.Insecure, updateBaseUrl)
 		if err != nil {
 			return fmt.Errorf("getting http client by tls flag: %v", err)
 		}
@@ -69,7 +68,7 @@ func (pack *Pack) logicWrite(dnsCheck chan error) error {
 			log.Printf("!!!WARNING!!! Possible SSL-Stripping detected!")
 			log.Printf("Found certificate for hostname in your client configuration but the host does not offer https!")
 			log.Printf("")
-			if !tlsflag.Insecure() {
+			if !pack.Cfg.InternalCompatibilityFlags.Insecure {
 				log.Printf("update canceled: TLS certificate found, but negotiating a TLS connection with the target failed")
 				os.Exit(1)
 			}

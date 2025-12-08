@@ -12,7 +12,6 @@ import (
 
 	"github.com/gokrazy/internal/config"
 	"github.com/gokrazy/internal/deviceconfig"
-	"github.com/gokrazy/internal/tlsflag"
 	"github.com/gokrazy/tools/internal/version"
 	"github.com/gokrazy/tools/packer"
 )
@@ -50,8 +49,6 @@ func findPackageFiles(fileType string) ([]filePathAndModTime, error) {
 func (pack *Pack) logicPrepare(ctx context.Context) error {
 	log := pack.Env.Logger()
 	cfg := pack.Cfg
-	tlsflag.SetInsecure(cfg.InternalCompatibilityFlags.Insecure)
-	tlsflag.SetUseTLS(cfg.Update.UseTLS)
 
 	if cfg.InternalCompatibilityFlags.Update != "" &&
 		cfg.InternalCompatibilityFlags.Overwrite != "" {

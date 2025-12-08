@@ -234,7 +234,7 @@ func TestGokUpdate(t *testing.T) {
 	}
 
 	t.Logf("second update succeeded, doing another update after deleting the certificates (with --insecure)")
-	certPath, keyPath, err := tlsflag.CertificatePathsFor(hostname)
+	certPath, keyPath, err := tlsflag.CertificatePathsFor("self-signed", hostname)
 	if err != nil {
 		t.Fatal(err)
 	}

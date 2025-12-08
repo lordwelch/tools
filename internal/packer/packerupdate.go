@@ -15,7 +15,6 @@ import (
 	"github.com/gokrazy/internal/httpclient"
 	"github.com/gokrazy/internal/humanize"
 	"github.com/gokrazy/internal/progress"
-	"github.com/gokrazy/internal/tlsflag"
 	"github.com/gokrazy/internal/updateflag"
 	"github.com/gokrazy/updater"
 )
@@ -201,7 +200,7 @@ func (pack *Pack) logicUpdate(ctx context.Context, isDev bool, bootSize int64, r
 		if err != nil {
 			return err
 		}
-		updateHttpClient, _, err = httpclient.GetTLSHttpClientByTLSFlag(tlsflag.GetUseTLS(), false /* insecure */, updateBaseUrl)
+		updateHttpClient, _, err = httpclient.GetTLSHttpClientByTLSFlag(update.UseTLS, false /* insecure */, updateBaseUrl)
 		if err != nil {
 			return fmt.Errorf("getting http client by tls flag: %v", err)
 		}

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gokrazy/internal/tlsflag"
 	"github.com/gokrazy/internal/updateflag"
 	"github.com/gokrazy/tools/packer"
 )
@@ -300,7 +299,7 @@ func (pack *Pack) logicBuild(bindir string) error {
 	}
 	if update.CertPEM != "" && update.KeyPEM != "" {
 		// User requested TLS
-		if tlsflag.Insecure() {
+		if pack.Cfg.InternalCompatibilityFlags.Insecure {
 			// If -insecure is specified, use http instead of https to make the
 			// process of updating to non-empty -tls= a bit smoother.
 		} else {

@@ -93,7 +93,7 @@ func generateAndStoreSelfSignedCertificate(cfg *config.Struct, hostConfigPath, c
 }
 
 func getCertificate(cfg *config.Struct) (string, string, error) {
-	certPath, keyPath, err := tlsflag.CertificatePathsFor(cfg.Hostname)
+	certPath, keyPath, err := tlsflag.CertificatePathsFor(cfg.Update.UseTLS, cfg.Hostname)
 	if err != nil {
 		var nycerr *tlsflag.ErrNotYetCreated
 		if errors.As(err, &nycerr) {
