@@ -50,6 +50,10 @@ func (pack *Pack) logicWrite(dnsCheck chan error) error {
 		done := measure.Interactively("probing https")
 		remoteScheme, err := httpclient.GetRemoteScheme(updateBaseUrl)
 		done("")
+		if err != nil {
+			return err
+		}
+
 		if remoteScheme == "https" {
 			updateBaseUrl, err = updateflag.Value{
 				Update: pack.Cfg.InternalCompatibilityFlags.Update,
@@ -72,9 +76,6 @@ func (pack *Pack) logicWrite(dnsCheck chan error) error {
 			log.Printf("Proceeding anyway as requested (--insecure).")
 		}
 
-		if err != nil {
-			return err
-		}
 		updateBaseUrl.Path = "/"
 
 		target, err = updater.NewTarget(ctx, updateBaseUrl.String(), updateHttpClient)
