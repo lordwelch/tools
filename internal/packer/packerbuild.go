@@ -299,12 +299,7 @@ func (pack *Pack) logicBuild(bindir string) error {
 	}
 	if update.CertPEM != "" && update.KeyPEM != "" {
 		// User requested TLS
-		if pack.Cfg.InternalCompatibilityFlags.Insecure {
-			// If -insecure is specified, use http instead of https to make the
-			// process of updating to non-empty -tls= a bit smoother.
-		} else {
-			pack.schema = "https"
-		}
+		pack.schema = "https"
 
 		ssl.Dirents = append(ssl.Dirents, &FileInfo{
 			Filename:    "gokrazy-web.pem",

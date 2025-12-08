@@ -15,7 +15,6 @@ import (
 	"github.com/gokrazy/internal/deviceconfig"
 	"github.com/gokrazy/internal/httpclient"
 	"github.com/gokrazy/internal/updateflag"
-	"github.com/gokrazy/tools/internal/measure"
 	"github.com/gokrazy/tools/packer"
 	"github.com/gokrazy/updater"
 )
@@ -25,13 +24,13 @@ func (pack *Pack) logicWrite(dnsCheck chan error) error {
 	log := pack.Env.Logger()
 
 	var (
-		updateHttpClient         *http.Client
-		foundMatchingCertificate bool
-		updateBaseUrl            *url.URL
-		target                   *updater.Target
+		updateHttpClient *http.Client
+		updateBaseUrl    *url.URL
+		target           *updater.Target
 	)
 
 	newInstallation := pack.Cfg.InternalCompatibilityFlags.Update == ""
+	insecure := pack.Cfg.InternalCompatibilityFlags.Insecure
 	if !newInstallation {
 		update := pack.update // for convenience
 		var err error
@@ -42,44 +41,34 @@ func (pack *Pack) logicWrite(dnsCheck chan error) error {
 			return err
 		}
 
-		updateHttpClient, foundMatchingCertificate, err = httpclient.GetTLSHttpClientByTLSFlag(update.UseTLS, pack.Cfg.InternalCompatibilityFlags.Insecure, updateBaseUrl)
+		updateHttpClient, _, err = httpclient.GetTLSHttpClientByTLSFlag(update.UseTLS, insecure, updateBaseUrl)
 		if err != nil {
 			return fmt.Errorf("getting http client by tls flag: %v", err)
-		}
-		done := measure.Interactively("probing https")
-		remoteScheme, err := httpclient.GetRemoteScheme(updateBaseUrl)
-		done("")
-		if err != nil {
-			return err
-		}
-
-		if remoteScheme == "https" {
-			updateBaseUrl, err = updateflag.Value{
-				Update: pack.Cfg.InternalCompatibilityFlags.Update,
-			}.BaseURL(update.HTTPPort, update.HTTPSPort, "https", update.Hostname, update.HTTPPassword)
-			if err != nil {
-				return err
-			}
-			pack.Cfg.InternalCompatibilityFlags.Update = updateBaseUrl.String()
-		}
-
-		if updateBaseUrl.Scheme != "https" && foundMatchingCertificate {
-			log.Printf("")
-			log.Printf("!!!WARNING!!! Possible SSL-Stripping detected!")
-			log.Printf("Found certificate for hostname in your client configuration but the host does not offer https!")
-			log.Printf("")
-			if !pack.Cfg.InternalCompatibilityFlags.Insecure {
-				log.Printf("update canceled: TLS certificate found, but negotiating a TLS connection with the target failed")
-				os.Exit(1)
-			}
-			log.Printf("Proceeding anyway as requested (--insecure).")
 		}
 
 		updateBaseUrl.Path = "/"
 
 		target, err = updater.NewTarget(ctx, updateBaseUrl.String(), updateHttpClient)
 		if err != nil {
-			return fmt.Errorf("checking target partuuid support: %v", err)
+			if !insecure {
+				return fmt.Errorf("checking target partuuid support: %v", err)
+			}
+			log.Printf("Falling back to HTTP because of the --insecure flag")
+			updateBaseUrl, err = updateflag.Value{
+				Update: pack.Cfg.InternalCompatibilityFlags.Update,
+			}.BaseURL(update.HTTPPort, update.HTTPSPort, "http", update.Hostname, update.HTTPPassword)
+			if err != nil {
+				return err
+			}
+
+			updateHttpClient, _, err = httpclient.GetTLSHttpClientByTLSFlag(update.UseTLS, insecure, updateBaseUrl)
+			if err != nil {
+				return fmt.Errorf("getting http client by tls flag: %v", err)
+			}
+			target, err = updater.NewTarget(ctx, updateBaseUrl.String(), updateHttpClient)
+			if err != nil {
+				return fmt.Errorf("checking target partuuid support: %v", err)
+			}
 		}
 		pack.UsePartuuid = target.Supports("partuuid")
 		pack.UseGPTPartuuid = target.Supports("gpt")
