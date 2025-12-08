@@ -72,9 +72,6 @@ func (pack *Pack) logicWrite(dnsCheck chan error) error {
 			log.Printf("Proceeding anyway as requested (--insecure).")
 		}
 
-		// Opt out of PARTUUID= for updating until we can check the remote
-		// userland version is new enough to understand how to set the active
-		// root partition when PARTUUID= is in use.
 		if err != nil {
 			return err
 		}
