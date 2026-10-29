@@ -135,7 +135,7 @@ func (ae *archiveExtraction) extractArchive(path string) (time.Time, error) {
 			latestTime = header.ModTime
 		}
 
-		dir := filepath.Dir(filename)
+		dir := strings.TrimPrefix(filepath.Dir(filename), "/")
 		// Create all directory elements. Archives can contain directory entries
 		// without having entries for their parent, e.g. web/assets/fonts/ might
 		// be the first entry in an archive.
@@ -210,7 +210,7 @@ func addExtraFilesFromDir(pkg, dir string, fi *FileInfo) error {
 	for _, effectivePath = range extraFilesArchiveCandidates(dir) {
 		latestModTime, err = ae.extractArchive(effectivePath)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to extract archive %s: %w", effectivePath, err)
 		}
 		if len(fi.Dirents) > 0 {
 			break
@@ -220,7 +220,7 @@ func addExtraFilesFromDir(pkg, dir string, fi *FileInfo) error {
 		effectivePath = dir
 		latestModTime, err = addToFileInfo(fi, effectivePath)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to extract archive %s: %w", effectivePath, err)
 		}
 		if len(fi.Dirents) == 0 {
 			return nil

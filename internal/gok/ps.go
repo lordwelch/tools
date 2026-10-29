@@ -44,6 +44,10 @@ func (r *psImplConfig) run(ctx context.Context, args []string, stdout, stderr io
 	}
 	cfg.ApplyEnvironment()
 
+	if cfg.Update.Hostname == "" {
+		cfg.Update.Hostname = cfg.Hostname
+	}
+
 	acfg, err := gokapi.ConnectRemotely(cfg)
 	if err != nil {
 		return err

@@ -78,7 +78,7 @@ func (pack *Pack) logicBuild(bindir string) error {
 		foundBins []foundBin
 	)
 	trace.WithRegion(context.Background(), "findbins", func() {
-		root, foundBins, err = findBins(cfg, buildEnv, bindir, pack.basenames)
+		root, foundBins, err = findBins(cfg, buildEnv, bindir, pack.basenames, pack.xattrs)
 	})
 	if err != nil {
 		return err

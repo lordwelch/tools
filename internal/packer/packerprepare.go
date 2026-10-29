@@ -589,3 +589,16 @@ func findCapabilities(cfg *config.Struct) (map[string]map[string][]byte, error) 
 	}
 	return contents, nil
 }
+
+func printFilesystem(root *FileInfo, parent string) {
+	for _, dir := range root.Dirents {
+		fmt.Printf("%s/%s", parent, dir.Filename)
+		if !dir.isFile() && dir.SymlinkDest == "" {
+			fmt.Print("/")
+			fmt.Print("\n")
+			printFilesystem(dir, filepath.Join(parent, dir.Filename))
+			continue
+		}
+		fmt.Print("\n")
+	}
+}
