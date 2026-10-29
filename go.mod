@@ -29,6 +29,6 @@ require (
 	golang.org/x/oauth2 v0.36.0 // indirect
 )
 
-replace github.com/gokrazy/internal => gitea.narnian.us/gokrazy/internal v0.0.0-20261029072459-b7c458a95f85
+replace github.com/gokrazy/internal => gitea.narnian.us/gokrazy/internal v0.0.0-20261029074327-f767639e13d7
 
 replace github.com/gokrazy/gokrazy => gitea.narnian.us/lordwelch/gokrazy v0.0.0-20261029071330-8296ca847151

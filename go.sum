@@ -1,5 +1,5 @@
-gitea.narnian.us/gokrazy/internal v0.0.0-20261029072459-b7c458a95f85 h1:TvegMVmQVcQeOEVJXTpOq++okqwrmQlxTW7L1Zsvk3c=
-gitea.narnian.us/gokrazy/internal v0.0.0-20261029072459-b7c458a95f85/go.mod h1:dQY4EMkD4L5ZjYJ0SPtpgYbV7MIUMCxNIXiOfnZ6jP4=
+gitea.narnian.us/gokrazy/internal v0.0.0-20261029074327-f767639e13d7 h1:uEbW03eP24bhLJ7J1DoTY1DpLgwzVT3Z0sBws/pj/hE=
+gitea.narnian.us/gokrazy/internal v0.0.0-20261029074327-f767639e13d7/go.mod h1:dQY4EMkD4L5ZjYJ0SPtpgYbV7MIUMCxNIXiOfnZ6jP4=
 github.com/anatol/vmtest v0.0.0-20260509163454-0d3e5bd9399c h1:wfvooxyz17KTpjvi600frIatfSLa+VCHyE8ralCrE70=
 github.com/anatol/vmtest v0.0.0-20260509163454-0d3e5bd9399c/go.mod h1:LQKSHEViwHPr4yRxK/6U+WpYY8ytg1uvVrjt/+PYgfI=
 github.com/antihax/optional v1.0.0 h1:xK2lYat7ZLaVVcIuj82J8kIro4V6kDe0AUDFboUCwcg=
